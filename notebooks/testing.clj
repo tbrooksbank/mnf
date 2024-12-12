@@ -30,6 +30,11 @@
 
 (clerk/table player-stats)
 
+(def pretty-player-stats
+  (mnf/display-player-stats player-stats))
+
+(clerk/table pretty-player-stats)
+
 (def this-weeks-players
   ["Rick Miles"
    "Christian"

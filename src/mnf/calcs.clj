@@ -29,10 +29,14 @@
    (fn [acc match]
      (let [{:keys [match-id date team-colours-data team-bibs-data]} match
            colours-result {:won (> (:goals team-colours-data) (:goals team-bibs-data))
+                           :drawn (= (:goals team-colours-data) (:goals team-bibs-data))
+                           :lost (< (:goals team-colours-data) (:goals team-bibs-data))
                            :goals-for (:goals team-colours-data)
                            :goals-against (:goals team-bibs-data)
                            :date date}
            bibs-result {:won (> (:goals team-bibs-data) (:goals team-colours-data))
+                        :drawn (= (:goals team-bibs-data) (:goals team-colours-data))
+                        :lost (< (:goals team-bibs-data) (:goals team-colours-data))
                         :goals-for (:goals team-bibs-data)
                         :goals-against (:goals team-colours-data)
                         :date date}]
@@ -72,6 +76,10 @@
                                                 (:shooting-at-railway (:team-bibs-data match)))))
                       total-games (count player-matches)
                       wins (count (filter :won player-matches))
+                      draws (count (filter :drawn player-matches))
+                      losses (count (filter :lost player-matches))
+                      total-goals-for (reduce + (map :goals-for player-matches))
+                      total-goals-against (reduce + (map :goals-against player-matches))
                       total-goal-diff (reduce + (map #(- (:goals-for %) (:goals-against %))
                                                      player-matches))
                       bibs-games (count (filter player-in-bibs? matches))
@@ -93,11 +101,15 @@
                                          0.0)
                       recent-win-score (normalize-value recent-win-ratio 0.25 0.75)
                       recent-goal-score (normalize-value recent-goal-diff -2.0 2.0)
-                      recent-form (+ (* 0.8 recent-win-score)
-                                     (* 0.2 recent-goal-score))
 
                       base-stats {:player player
                                   :games-played total-games
+                                  :games-won wins
+                                  :games-drawn draws
+                                  :games-lost losses
+                                  :goals-for total-goals-for
+                                  :goals-against total-goals-against
+                                  :goal-difference total-goal-diff
                                   :win-ratio (round-4dp win-ratio)
                                   :avg-goal-diff (round-4dp avg-goal-diff)
                                   :bibs-ratio (round-4dp (if (pos? total-games)
@@ -108,8 +120,8 @@
                                                    0.0)
                                   :win-score (round-4dp win-score)
                                   :goal-score (round-4dp goal-score)
-                                  :recent-form (round-4dp recent-form)
                                   :recent-win-ratio (round-4dp recent-win-ratio)
+                                  :recent-win-score (round-4dp recent-win-score)
                                   :recent-goal-diff (round-4dp recent-goal-diff)
                                   :recent-goal-score (round-4dp recent-goal-score)}
                       player-data (some #(when (= player (:name %))
@@ -119,7 +131,10 @@
                   (assoc merged-stats
                          :player-score (round-4dp (+ (* 0.5 (:manager-rating merged-stats 0.5))
                                                      (* 0.4 (:win-score merged-stats))
-                                                     (* 0.1 (:goal-score merged-stats))))))))
+                                                     (* 0.1 (:goal-score merged-stats))))
+                         :recent-player-score (round-4dp (+ (* 0.5 (:manager-rating merged-stats))
+                                                            (* 0.4 (:recent-win-score merged-stats))
+                                                            (* 0.1 (:recent-goal-score merged-stats))))))))
          (sort-by :games-played >))))
 
 (defn generate-team-combinations
@@ -156,27 +171,23 @@
         player-count (count team-stats)]
     (when (pos? player-count)
       {:avg-player-score (round-4dp (/ (reduce + (map :player-score team-stats)) player-count))
+       :avg-recent-player-score (round-4dp (/ (reduce + (map :recent-player-score team-stats)) player-count))
        :avg-win-ratio (round-4dp (/ (reduce + (map :win-ratio team-stats)) player-count))
        :avg-goal-score (round-4dp (/ (reduce + (map :goal-score team-stats)) player-count))
        :avg-bibs-ratio (round-4dp (/ (reduce + (map :bibs-ratio team-stats)) player-count))
        :avg-railway-ratio (round-4dp (/ (reduce + (map :railway-ratio team-stats)) player-count))
        :avg-attacking-bias (round-4dp (/ (reduce + (map :attacking-bias team-stats)) player-count))
        :avg-defensive-bias (round-4dp (/ (reduce + (map :defensive-bias team-stats)) player-count))
-       :avg-recent-form (round-4dp (/ (reduce + (map :recent-form team-stats)) player-count))
        :avg-recent-win-ratio (round-4dp (/ (reduce + (map :recent-win-ratio team-stats)) player-count))
        :avg-recent-goal-score (round-4dp (/ (reduce + (map :recent-goal-score team-stats)) player-count))})))
 
 (defn calculate-balance-score
   "Calculate how balanced two teams are (1.0 is perfect balance, >1 favors team1, <1 favors team2)"
   [team1-stats team2-stats]
-  (let [score-diff (- (:avg-player-score team1-stats)
-                      (:avg-player-score team2-stats))
+  (let [score-diff (- (:avg-recent-player-score team1-stats)
+                      (:avg-recent-player-score team2-stats))
         win-diff (- (:avg-win-ratio team1-stats)
                     (:avg-win-ratio team2-stats))
-        goal-score-diff (- (:avg-goal-score team1-stats)
-                           (:avg-goal-score team2-stats))
-        recent-form-dif (- (:avg-recent-form team1-stats)
-                           (:avg-recent-form team2-stats))
         recent-win-diff (- (:avg-recent-win-ratio team1-stats)
                            (:avg-recent-win-ratio team2-stats))
         recent-goal-score-diff (- (:avg-recent-goal-score team1-stats)
@@ -186,12 +197,10 @@
 
         ;; Calculate weighted composite difference
         weighted-diff (+ (* chemistry-diff 0.5)
-                         (* recent-form-dif 0.1)
-                         (* score-diff 0.2)
+                         (* score-diff 0.325)
                          (* recent-win-diff 0.075)
                          (* win-diff 0.05)
-                         (* recent-goal-score-diff 0.025)
-                         (* goal-score-diff 0.025))
+                         (* recent-goal-score-diff 0.05))
 
         ;; Transform to 1-centered scale using exponential
         ;; This will give us 1 for perfect balance,
@@ -217,3 +226,40 @@
          (sort-by #(abs (- 1 (:balance-score %))))
          (take 5)
          vec)))
+
+(defn normalize-to-fifa
+  "Convert a normalized score (0-1) to FIFA rating (60-99)
+   Calibrated so that 0.25 -> 70 and 0.75 -> 90"
+  [score]
+  (let [fifa-score (+ (* 40 score) 60)]
+    (-> fifa-score
+        Math/round
+        (max 60)
+        (min 99))))
+
+(defn display-player-stats [player-stats]
+  (->> player-stats
+       (map (fn [stat]
+              (let [processed-stat (-> stat
+                                       (select-keys [:player :recent-player-score :player-score :games-won :games-drawn :games-lost
+                                                     :goals-for :goals-against :goal-difference :bibs-ratio :railway-ratio])
+                                       (assoc :points (+ (* 3 (:games-won stat))
+                                                         (:games-drawn stat)))
+                                       (update :recent-player-score normalize-to-fifa)
+                                       (update :player-score normalize-to-fifa)
+                                       (clojure.set/rename-keys {:recent-player-score :current-rating
+                                                                 :player-score :lifetime-rating}))]
+                (array-map
+                 :player (:player processed-stat)
+                 :current-rating (:current-rating processed-stat)
+                 :lifetime-rating (:lifetime-rating processed-stat)
+                 :bibs-ratio (:bibs-ratio processed-stat)
+                 :railway-ratio (:railway-ratio processed-stat)
+                 :won (:games-won processed-stat)
+                 :drawn (:games-drawn processed-stat)
+                 :lost (:games-lost processed-stat)
+                 :points (:points processed-stat)
+                 :goals-for (:goals-for processed-stat)
+                 :goals-against (:goals-against processed-stat)
+                 :goal-difference (:goal-difference processed-stat)))))
+       (sort-by :points >)))
