@@ -11,13 +11,16 @@
   {:nextjournal.clerk/toc true}
   (:require [nextjournal.clerk :as clerk]
             [mnf.calcs :as mnf]
-            [mnf.data-validation :as mnf.data-validation]))
+            [mnf.data.validation :as mnf.data-validation]
+            [mnf.data.output-tables :as tables]))
 
+^::clerk/no-cache
 (def match-data
   (mnf/load-data "./resources/dummy_data.edn"))
 
 (clerk/table match-data)
 
+^::clerk/no-cache
 (def players
   (mnf/load-data "./resources/players.edn"))
 
@@ -25,15 +28,23 @@
 
 (mnf.data-validation/validate-all-data match-data players)
 
+^::clerk/no-cache
 (def player-stats
   (mnf/calculate-player-stats match-data players))
 
 (clerk/table player-stats)
 
-(def pretty-player-stats
-  (mnf/display-player-stats player-stats))
+^::clerk/no-cache
+(def player-info
+  (tables/player-info player-stats))
 
-(clerk/table pretty-player-stats)
+(clerk/table player-info)
+
+^::clerk/no-cache
+(def league-table-2
+  (tables/league-table player-stats))
+
+(clerk/table league-table-2)
 
 (def this-weeks-players
   ["Rick Miles"
@@ -53,16 +64,12 @@
    "Mark Burnage"
    "Zam"])
 
+^::clerk/no-cache
 (def this-weeks-combos
   (mnf/generate-team-combinations this-weeks-players))
 
+^::clerk/no-cache
 (def team-options
   (mnf/analyze-team-combinations this-weeks-combos player-stats))
 
 (clerk/table team-options)
-
-(def team-example
-  {:team1 ["Andre" "Rick Miles" "Sam" "Catalin Dominte" "Edd Cowley" "Simon Wardell" "Mark Gawthrop" "Mark Burnage"] 
-   :team2 ["Tom Brooksbank" "Christian" "Chris" "Gary" "Jonny" "Zam" "Richard Brown" "Steve Rowland"]})
-
-(mnf/analyze-team-combinations team-example player-stats)

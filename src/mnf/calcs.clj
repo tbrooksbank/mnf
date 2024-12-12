@@ -236,30 +236,3 @@
         Math/round
         (max 60)
         (min 99))))
-
-(defn display-player-stats [player-stats]
-  (->> player-stats
-       (map (fn [stat]
-              (let [processed-stat (-> stat
-                                       (select-keys [:player :recent-player-score :player-score :games-won :games-drawn :games-lost
-                                                     :goals-for :goals-against :goal-difference :bibs-ratio :railway-ratio])
-                                       (assoc :points (+ (* 3 (:games-won stat))
-                                                         (:games-drawn stat)))
-                                       (update :recent-player-score normalize-to-fifa)
-                                       (update :player-score normalize-to-fifa)
-                                       (clojure.set/rename-keys {:recent-player-score :current-rating
-                                                                 :player-score :lifetime-rating}))]
-                (array-map
-                 :player (:player processed-stat)
-                 :current-rating (:current-rating processed-stat)
-                 :lifetime-rating (:lifetime-rating processed-stat)
-                 :bibs-ratio (:bibs-ratio processed-stat)
-                 :railway-ratio (:railway-ratio processed-stat)
-                 :won (:games-won processed-stat)
-                 :drawn (:games-drawn processed-stat)
-                 :lost (:games-lost processed-stat)
-                 :points (:points processed-stat)
-                 :goals-for (:goals-for processed-stat)
-                 :goals-against (:goals-against processed-stat)
-                 :goal-difference (:goal-difference processed-stat)))))
-       (sort-by :points >)))
