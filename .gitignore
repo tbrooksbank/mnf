@@ -26,3 +26,8 @@
 /checkouts
 /classes
 /target
+.clerk
+.shadow-cljs
+node_modules
+package-lock.json
+package.json

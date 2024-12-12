@@ -10,49 +10,54 @@
 (ns testing
   {:nextjournal.clerk/toc true}
   (:require [nextjournal.clerk :as clerk]
-            [mnf.core :as mnf]))
+            [mnf.calcs :as mnf]
+            [mnf.data-validation :as mnf.data-validation]))
 
 (def match-data
-  (mnf/load-match-data "./resources/match_data.edn"))
+  (mnf/load-data "./resources/dummy_data.edn"))
 
-(def player-stats
-  (mnf/calculate-player-stats match-data))
+(clerk/table match-data)
 
 (def players
-  ["Andre"
-   "Tim"
-   "Saffet"
-   "Tom Brooksbank"
-   "Berk"
+  (mnf/load-data "./resources/players.edn"))
+
+(clerk/table players)
+
+(mnf.data-validation/validate-all-data match-data players)
+
+(def player-stats
+  (mnf/calculate-player-stats match-data players))
+
+(clerk/table player-stats)
+
+(def this-weeks-players
+  ["Rick Miles"
    "Christian"
-   "Simon"
-   "Rick"
-   "Mark G"
-   "Rich B"
-   "Steve"
-   "Mark B"
+   "Chris"
+   "Catalin Dominte"
+   "Sam"
+   "Andre"
+   "Gary"
+   "Edd Cowley"
+   "Simon Wardell"
+   "Steve Rowland"
+   "Tom Brooksbank"
    "Jonny"
-   "Henry"
-   "Kadir"
-   "Tom Searle"])
-   
-(def all-combinations (mnf/generate-team-combinations players))
+   "Mark Gawthrop"
+   "Richard Brown"
+   "Mark Burnage"
+   "Zam"])
 
-(def best-combination (mnf/find-most-balanced-combination all-combinations player-stats))
+(def this-weeks-combos
+  (mnf/generate-team-combinations this-weeks-players))
 
+(def team-options
+  (mnf/analyze-team-combinations this-weeks-combos player-stats))
 
-(defn print-balanced-teams [result]
-  (println "\nMost balanced combination found:")
-  (println "\nTeam 1:")
-  (println (clojure.string/join ", " (:team1 result)))
-  (println "Average score:" (format "%.2f" (get-in result [:team1-stats :avg-score])))
-  (println "Chemistry score:" (get-in result [:team1-stats :chemistry-score]))
-  (println "\nTeam 2:")
-  (println (clojure.string/join ", " (:team2 result)))
-  (println "Average score:" (format "%.2f" (get-in result [:team2-stats :avg-score])))
-  (println "Chemistry score:" (get-in result [:team2-stats :chemistry-score]))
-  (println "\nBalance score:" (format "%.3f" (:balance-score result))))
+(clerk/table team-options)
 
-(print-balanced-teams best-combination)
+(def team-example
+  {:team1 ["Andre" "Rick Miles" "Sam" "Catalin Dominte" "Edd Cowley" "Simon Wardell" "Mark Gawthrop" "Mark Burnage"] 
+   :team2 ["Tom Brooksbank" "Christian" "Chris" "Gary" "Jonny" "Zam" "Richard Brown" "Steve Rowland"]})
 
-
+(mnf/analyze-team-combinations team-example player-stats)
