@@ -85,4 +85,12 @@
                       :players #{"Christian" "Chris" "Sam" "Gary" "Edd Cowley" "Steve Rowland" "Jonny" "Zam"}}
   :team-bibs-data {:goals 4
                    :shooting-at-railway 0
-                   :players #{"Rick Miles" "Catalin Dominte" "Andre" "Simon Wardell" "Tom Brooksbank" "Mark Gawthrop" "Richard Brown" "Mark Burnage"}}}]
+                   :players #{"Rick Miles" "Catalin Dominte" "Andre" "Simon Wardell" "Tom Brooksbank" "Mark Gawthrop" "Richard Brown" "Mark Burnage"}}}
+{:match-id 11
+:date #inst "2024-03-11T00:00:00.000-00:00
+:team-colours-data {:goals 9
+										:shooting-at-railway 1
+										:players #{"Christian" "Chris" "Sam" "Gary" "Edd Cowley" "Steve Rowland" "Jonny" "Zam"}
+:team-bibs-data {:goals 7
+								 :shooting-at-railway 0
+								 :players #{"Rick Miles" "Catalin Dominte" "Andre" "Simon Wardell" "Tom Brooksbank" "Mark Gawthrop" "Richard Brown" "Mark Burnage"}}}]
