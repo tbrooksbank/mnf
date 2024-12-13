@@ -8,8 +8,8 @@
 
 (def app-state
   (r/atom {:active-tab "team-sheet"
-           :match-data nil
-           :player-data nil}))
+           :league-table nil
+           :player-info nil}))
 
 (def nav-state (r/atom {:menu-open? false}))
 
@@ -29,37 +29,46 @@
                 (js/console.error "Error loading" file-path ":" error)))))
 
 (defn load-data! []
-  (println "Loading data...")  ; Add this
-  (load-edn-file "/data/match-data.edn"
+  (println "Loading data...")
+  (load-edn-file "/data/mnf-data.edn"
                  #(do
-                    (println "Match data loaded")  ; Add this
-                    (swap! app-state assoc :match-data %)))
-  (load-edn-file "/data/player-stats.edn"
-                 #(do
-                    (println "Player data loaded")  ; Add this
-                    (swap! app-state assoc :player-data %))))
+                    (println "Data loaded")
+                    (swap! app-state assoc
+                           :league-table (:league-table %)
+                           :player-info (:player-info %)))))
 
 ;; Components
 (defn format-value [v]
   (cond
     (instance? js/Date v) (.toLocaleDateString v)
-    (number? v) (.toFixed v 2)  ; Format numbers to 2 decimal places
+    (number? v) (if (integer? v) v (.toFixed v 2))  ; Format decimals to 2 places, keep integers as is
     :else (str v)))
 
 (defn sort-by-key [data key-name ascending?]
   (let [comparator (if ascending? compare (comp - compare))]
     (sort-by #(get % key-name) comparator data)))
 
-(defn data-table [data]
+;; Define the column orders
+(def league-columns
+  [:player :played :won :drawn :lost :points :gf :ga :gd])
+
+(def player-columns
+  [:player :current-rating :lifetime-rating :baseline-rating])
+
+(defn data-table [data table-type]
   (let [state (r/atom {:sort-key nil
-                       :ascending? true})]
-    (fn [data]
+                       :ascending? true})
+        columns (case table-type
+                  :league league-columns
+                  :player player-columns
+                  (vec (keys (first data))))]
+    (fn [data _]
       (if (and data (seq data))
         [:table.data-table
          [:thead
           [:tr
            (doall
-            (for [header (keys (first data))]
+            (for [header columns]
               ^{:key header}
               [:th.sortable
                {:on-click #(swap! state (fn [s]
@@ -79,7 +88,7 @@
                ^{:key (hash row)}
                [:tr
                 (doall
-                 (for [header (keys (first data))]
+                 (for [header columns]
                    ^{:key (str (hash row) header)}
                    [:td (format-value (get row header))]))])))]]
         [:div "No data available"]))))
@@ -89,21 +98,21 @@
    [:h2 "Team Sheet"]
    [:p "Coming soon"]])
 
-(defn match-data []
+(defn league-table-component []
   [:div.section
-   [:h2 "Match Data"]
-   (let [data (:match-data @app-state)]
+   [:h2 "League Table"]
+   (let [data (:league-table @app-state)]
      (if (nil? data)
-       [:div "Loading match data..."]
-       [data-table data]))])
+       [:div "Loading league table..."]
+       [data-table data :league]))])
 
-(defn player-data []
+(defn player-info-component []
   [:div.section
-   [:h2 "Player Data"]
-   (let [data (:player-data @app-state)]
+   [:h2 "Player Info"]
+   (let [data (:player-info @app-state)]
      (if (nil? data)
-       [:div "Loading player stats..."]
-       [data-table data]))])
+       [:div "Loading player info..."]
+       [data-table data :player]))])
 
 (defn team-builder []
   [:div.section
@@ -129,8 +138,8 @@
      [:div.nav-menu {:class (when menu-open? "is-open")}
       [:div.nav-left
        [nav-link "team-sheet" "Team Sheet" active-tab]
-       [nav-link "match-data" "Match Data" active-tab]
-       [nav-link "player-data" "Player Data" active-tab]
+       [nav-link "league-table" "League Table" active-tab]
+       [nav-link "player-info" "Player Info" active-tab]
        [nav-link "team-builder" "Team Builder" active-tab]]]]))
 
 (defn main-content []
@@ -138,8 +147,8 @@
     [:div.content
      (case active-tab
        "team-sheet" [team-sheet]
-       "match-data" [match-data]
-       "player-data" [player-data]
+       "league-table" [league-table-component]
+       "player-info" [player-info-component]
        "team-builder" [team-builder]
        [team-sheet])]))
 
@@ -158,5 +167,6 @@
   (rdom/render @root-atom [app]))
 
 ;; Initialize once
+#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defonce start
   (init!))
