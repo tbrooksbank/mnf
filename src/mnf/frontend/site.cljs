@@ -1,7 +1,10 @@
 (ns mnf.frontend.site
   (:require [reagent.core :as r]
             [reagent.dom.client :as rdom]
-            [cljs.reader :as reader]))
+            [cljs.reader :as reader]
+            [goog.events :as events]))
+
+(goog-define BASE-PATH "")  ; This will be set by shadow-cljs based on environment
 
 ;; State
 (defonce root-atom (atom nil))
@@ -13,10 +16,23 @@
 
 (def nav-state (r/atom {:menu-open? false}))
 
+;; Navigation handling
+(defn handle-hash-change [_]
+  (let [hash (.. js/window -location -hash)
+        tab (if (empty? hash)
+              "team-sheet"  ; default tab
+              (subs hash 1))]  ; remove the # from the hash
+    (swap! app-state assoc :active-tab tab)))
+
+;; Set up hash change listener
+(defn init-routing! []
+  (.addEventListener js/window "hashchange" handle-hash-change)
+  (handle-hash-change nil))  ; Handle initial route
+
 ;; Data Loading
 (defn load-edn-file [file-path callback]
-  (js/console.log "Attempting to load:" file-path)
-  (-> (js/fetch file-path)
+  (js/console.log "Attempting to load:" (str BASE-PATH file-path))
+  (-> (js/fetch (str BASE-PATH file-path))
       (.then (fn [response]
                (js/console.log "Response status:" (.-status response))
                (if (.-ok response)
@@ -122,8 +138,7 @@
 (defn nav-link [id label active-tab]
   [:a.nav-link
    {:href (str "#" id)
-    :class (when (= active-tab id) "active")
-    :on-click #(swap! app-state assoc :active-tab id)}
+    :class (when (= active-tab id) "active")}
    label])
 
 (defn navigation []
@@ -164,6 +179,7 @@
   (load-data!)
   (when-not @root-atom
     (reset! root-atom (rdom/create-root (.getElementById js/document "app"))))
+  (init-routing!)  ; Initialize routing
   (rdom/render @root-atom [app]))
 
 ;; Initialize once

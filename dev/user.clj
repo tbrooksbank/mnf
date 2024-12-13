@@ -4,7 +4,10 @@
 
 (defn handler [req]
   (let [uri (if (= "/" (:uri req)) "/index.html" (:uri req))
-        file (io/file "docs" (subs uri 1))]
+        ;; Use dev/index.html for index, everything else from docs
+        file (if (= uri "/index.html")
+               (io/file "dev/index.html")
+               (io/file "docs" (subs uri 1)))]
     (if (.exists file)
       {:status 200
        :headers {"Content-Type" (cond
@@ -12,10 +15,11 @@
                                   (.endsWith uri ".css") "text/css"
                                   (.endsWith uri ".js") "application/javascript"
                                   (.endsWith uri ".edn") "application/edn"
+                                  (.endsWith uri ".svg") "image/svg+xml"
                                   :else "text/plain")}
        :body file}
       {:status 404
-       :body "Not found"})))
+       :body (str "Not found: " uri)})))
 
 (defn start-server []
   (server/run-server handler {:port 3000}))
